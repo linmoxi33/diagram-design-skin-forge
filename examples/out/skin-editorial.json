@@ -1,0 +1,93 @@
+{
+  "schema": "skin-forge/1",
+  "brand": {
+    "name": "editorial"
+  },
+  "skins": {
+    "light": {
+      "paper": "#f5f5f5",
+      "paper-2": "#ededee",
+      "ink": "#2d3142",
+      "muted": "#4f5d75",
+      "soft": "#677184",
+      "rule": "rgba(45,49,66,0.12)",
+      "rule-solid": "#bfc0c0",
+      "accent": "#da2700",
+      "accent-tint": "rgba(218,39,0,0.08)",
+      "link": "#4a527a"
+    },
+    "dark": {
+      "paper": "#2d3142",
+      "paper-2": "#393d4d",
+      "ink": "#f5f5f5",
+      "muted": "#bfc0c0",
+      "soft": "#9fa1a4",
+      "rule": "rgba(245,245,245,0.12)",
+      "rule-solid": "rgba(191,192,192,0.25)",
+      "accent": "#ff6948",
+      "accent-tint": "rgba(255,105,72,0.1)",
+      "link": "#9097bc"
+    }
+  },
+  "checks": {
+    "light": {
+      "ink": {
+        "ratio": 11.82,
+        "min": 4.5,
+        "pass": true
+      },
+      "muted": {
+        "ratio": 6.11,
+        "min": 4.5,
+        "pass": true
+      },
+      "soft": {
+        "ratio": 4.51,
+        "min": 4.5,
+        "pass": true
+      },
+      "accent": {
+        "ratio": 4.51,
+        "min": 4.5,
+        "pass": true
+      },
+      "link": {
+        "ratio": 6.93,
+        "min": 4.5,
+        "pass": true
+      }
+    },
+    "dark": {
+      "ink": {
+        "ratio": 11.82,
+        "min": 4.5,
+        "pass": true
+      },
+      "muted": {
+        "ratio": 7.07,
+        "min": 4.5,
+        "pass": true
+      },
+      "soft": {
+        "ratio": 4.98,
+        "min": 4.5,
+        "pass": true
+      },
+      "accent": {
+        "ratio": 4.52,
+        "min": 4.5,
+        "pass": true
+      },
+      "link": {
+        "ratio": 4.5,
+        "min": 4.5,
+        "pass": true
+      }
+    }
+  },
+  "summary": {
+    "roles": 10,
+    "modes": 2,
+    "violations": 0
+  }
+}

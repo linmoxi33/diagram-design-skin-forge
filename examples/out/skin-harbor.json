@@ -1,0 +1,93 @@
+{
+  "schema": "skin-forge/1",
+  "brand": {
+    "name": "harbor"
+  },
+  "skins": {
+    "light": {
+      "paper": "#f7f9fb",
+      "paper-2": "#eef0f3",
+      "ink": "#10243e",
+      "muted": "#3e5b78",
+      "soft": "#5e758e",
+      "rule": "rgba(16,36,62,0.12)",
+      "rule-solid": "#b8c4ce",
+      "accent": "#0b6bcb",
+      "accent-tint": "rgba(11,107,203,0.08)",
+      "link": "#374c7f"
+    },
+    "dark": {
+      "paper": "#10243e",
+      "paper-2": "#1e3149",
+      "ink": "#f7f9fb",
+      "muted": "#b8c4ce",
+      "soft": "#93a1ae",
+      "rule": "rgba(247,249,251,0.12)",
+      "rule-solid": "rgba(184,196,206,0.25)",
+      "accent": "#238bf3",
+      "accent-tint": "rgba(35,139,243,0.1)",
+      "link": "#7189c2"
+    }
+  },
+  "checks": {
+    "light": {
+      "ink": {
+        "ratio": 14.81,
+        "min": 4.5,
+        "pass": true
+      },
+      "muted": {
+        "ratio": 6.69,
+        "min": 4.5,
+        "pass": true
+      },
+      "soft": {
+        "ratio": 4.51,
+        "min": 4.5,
+        "pass": true
+      },
+      "accent": {
+        "ratio": 5.0,
+        "min": 4.5,
+        "pass": true
+      },
+      "link": {
+        "ratio": 7.95,
+        "min": 4.5,
+        "pass": true
+      }
+    },
+    "dark": {
+      "ink": {
+        "ratio": 14.81,
+        "min": 4.5,
+        "pass": true
+      },
+      "muted": {
+        "ratio": 8.8,
+        "min": 4.5,
+        "pass": true
+      },
+      "soft": {
+        "ratio": 5.92,
+        "min": 4.5,
+        "pass": true
+      },
+      "accent": {
+        "ratio": 4.51,
+        "min": 4.5,
+        "pass": true
+      },
+      "link": {
+        "ratio": 4.51,
+        "min": 4.5,
+        "pass": true
+      }
+    }
+  },
+  "summary": {
+    "roles": 10,
+    "modes": 2,
+    "violations": 0
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "schema": "skin-forge/1",
+  "brand": {
+    "name": "grove"
+  },
+  "skins": {
+    "light": {
+      "paper": "#f6f4ed",
+      "paper-2": "#eeece5",
+      "ink": "#22301f",
+      "muted": "#4f6b45",
+      "soft": "#617558",
+      "rule": "rgba(34,48,31,0.12)",
+      "rule-solid": "#c3cbb8",
+      "accent": "#3f7d20",
+      "accent-tint": "rgba(63,125,32,0.08)",
+      "link": "#437040"
+    },
+    "dark": {
+      "paper": "#22301f",
+      "paper-2": "#2f3c2b",
+      "ink": "#f6f4ed",
+      "muted": "#c3cbb8",
+      "soft": "#a0a996",
+      "rule": "rgba(246,244,237,0.12)",
+      "rule-solid": "rgba(195,203,184,0.25)",
+      "accent": "#54a62a",
+      "accent-tint": "rgba(84,166,42,0.1)",
+      "link": "#61a25c"
+    }
+  },
+  "checks": {
+    "light": {
+      "ink": {
+        "ratio": 12.63,
+        "min": 4.5,
+        "pass": true
+      },
+      "muted": {
+        "ratio": 5.42,
+        "min": 4.5,
+        "pass": true
+      },
+      "soft": {
+        "ratio": 4.55,
+        "min": 4.5,
+        "pass": true
+      },
+      "accent": {
+        "ratio": 4.58,
+        "min": 4.5,
+        "pass": true
+      },
+      "link": {
+        "ratio": 5.26,
+        "min": 4.5,
+        "pass": true
+      }
+    },
+    "dark": {
+      "ink": {
+        "ratio": 12.63,
+        "min": 4.5,
+        "pass": true
+      },
+      "muted": {
+        "ratio": 8.31,
+        "min": 4.5,
+        "pass": true
+      },
+      "soft": {
+        "ratio": 5.7,
+        "min": 4.5,
+        "pass": true
+      },
+      "accent": {
+        "ratio": 4.54,
+        "min": 4.5,
+        "pass": true
+      },
+      "link": {
+        "ratio": 4.52,
+        "min": 4.5,
+        "pass": true
+      }
+    }
+  },
+  "summary": {
+    "roles": 10,
+    "modes": 2,
+    "violations": 0
+  }
+}

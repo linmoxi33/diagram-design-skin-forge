@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+"""diagram-design-skin-forge: compile a brand palette into a WCAG-checked skin.
+
+Upstream: https://github.com/cathrynlavery/diagram-design
+The upstream style guide documents a semantic-token skin in prose and ships one
+default.  This tool applies the same stated derivation rules (accent darkened
+until it clears 4.5:1, opaque rgba() rules, light/dark inversion) as code, so a
+brand palette becomes a complete light+dark token set that can be checked
+before it is pasted into style-guide.md.
+
+Exit codes: 0 = all roles clear the contract, 1 = at least one violation,
+2 = usage or input error.
+"""
+
+from __future__ import annotations
+
+import argparse
+import colorsys
+import json
+import sys
+from pathlib import Path
+
+SCHEMA = "skin-forge/1"
+TEXT_ROLES = ("ink", "muted", "soft", "accent", "link")
+ROLES = ("paper", "paper-2", "ink", "muted", "soft", "rule", "rule-solid",
+         "accent", "accent-tint", "link")
+TEXT_MIN = 4.5
+NON_TEXT_MIN = 3.0
+
+
+class InputError(Exception):
+    """Usage or input error, mapped to exit code 2."""
+
+
+# ---------------------------------------------------------------- color math
+def parse_hex(value: str) -> tuple[int, int, int]:
+    if not isinstance(value, str):
+        raise InputError(f"color must be a string, got {type(value).__name__}")
+    v = value.strip().lstrip("#")
+    if len(v) == 3:
+        v = "".join(c * 2 for c in v)
+    if len(v) != 6:
+        raise InputError(f"not a 3/6-digit hex color: {value!r}")
+    try:
+        return tuple(int(v[i:i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
+    except ValueError as exc:
+        raise InputError(f"not a hex color: {value!r}") from exc
+
+
+def to_hex(rgb: tuple[float, float, float]) -> str:
+    return "#%02x%02x%02x" % tuple(max(0, min(255, round(c))) for c in rgb)
+
+
+def luminance(rgb: tuple[int, int, int]) -> float:
+    def channel(c: int) -> float:
+        c = c / 255.0
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (channel(c) for c in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
+    la, lb = luminance(a), luminance(b)
+    hi, lo = max(la, lb), min(la, lb)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def mix(a: str, b: str, t: float) -> str:
+    ra, rb = parse_hex(a), parse_hex(b)
+    return to_hex(tuple(ra[i] + (rb[i] - ra[i]) * t for i in range(3)))
+
+
+def adjust_lightness(color: str, background: str, target: float,
+                     darken: bool) -> str:
+    """Binary-search HSL lightness, keeping hue and saturation fixed."""
+    bg = parse_hex(background)
+    r, g, b = (c / 255.0 for c in parse_hex(color))
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+    lo, hi = (0.0, l) if darken else (l, 1.0)
+    best = (l, (r * 255, g * 255, b * 255))
+    for _ in range(48):
+        mid = (lo + hi) / 2
+        rgb = colorsys.hls_to_rgb(h, mid, s)
+        candidate = tuple(c * 255 for c in rgb)
+        if contrast(bg, candidate) >= target:  # type: ignore[arg-type]
+            best = (mid, candidate)
+            if darken:
+                lo = mid
+            else:
+                hi = mid
+        elif darken:
+            hi = mid
+        else:
+            lo = mid
+    # 8-bit quantization can push a marginal value back under the bar, so step
+    # the lightness until the hex that is actually emitted clears it.
+    lightness = best[0]
+    step = -0.002 if darken else 0.002
+    for _ in range(200):
+        hexv = to_hex(tuple(c * 255 for c in colorsys.hls_to_rgb(h, lightness, s)))
+        if contrast(bg, parse_hex(hexv)) >= target:
+            return hexv
+        lightness = max(0.0, min(1.0, lightness + step))
+    return to_hex(best[1])
+
+
+def ensure_text(color: str, background: str, darken: bool,
+                target: float = TEXT_MIN) -> str:
+    if contrast(parse_hex(background), parse_hex(color)) >= target:
+        return to_hex(parse_hex(color))
+    return adjust_lightness(color, background, target, darken)
+
+
+def role(hexv: str, alpha: float) -> str:
+    r, g, b = parse_hex(hexv)
+    return f"rgba({r},{g},{b},{alpha:g})"
+
+
+def shift_hue(color: str, degrees: float, sat_scale: float) -> str:
+    r, g, b = (c / 255.0 for c in parse_hex(color))
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+    h = (h + degrees / 360.0) % 1.0
+    s = min(1.0, s * sat_scale)
+    return to_hex(tuple(c * 255 for c in colorsys.hls_to_rgb(h, l, s)))
+
+
+# ---------------------------------------------------------------- compiling
+def compile_skin(brand: dict) -> dict:
+    """Derive the ten semantic roles for light and dark from five brand colors."""
+    for key in ("paper", "ink", "accent", "slate", "silver"):
+        if key not in brand:
+            raise InputError(f"brand palette is missing {key!r}")
+        parse_hex(brand[key])
+    paper, ink = brand["paper"], brand["ink"]
+    accent, slate, silver = brand["accent"], brand["slate"], brand["silver"]
+
+    # Light: paper/ink as given, derivation follows style-guide.md.
+    l_ink = ensure_text(ink, paper, darken=True)
+    l_muted = ensure_text(slate, paper, darken=True)
+    l_soft = ensure_text(mix(l_muted, paper, 0.18), paper, darken=True)
+    l_accent = ensure_text(accent, paper, darken=True)
+    l_link = ensure_text(shift_hue(slate, 12, 1.25), paper, darken=True)
+
+    # Dark: inverted surfaces; accent brightened, as style-guide.md states.
+    d_paper = brand["ink"] if luminance(parse_hex(brand["ink"])) < 0.25 \
+        else adjust_lightness(brand["ink"], "#000000", 8.0, darken=True)
+    d_ink = ensure_text(paper, d_paper, darken=False)
+    d_muted = ensure_text(silver, d_paper, darken=False)
+    d_soft = ensure_text(mix(d_muted, d_paper, 0.22), d_paper, darken=False)
+    d_accent = ensure_text(accent, d_paper, darken=False)
+    d_link = ensure_text(shift_hue(slate, 12, 1.25), d_paper, darken=False)
+
+    light = {
+        "paper": to_hex(parse_hex(paper)),
+        "paper-2": mix(paper, l_ink, 0.04),
+        "ink": l_ink,
+        "muted": l_muted,
+        "soft": l_soft,
+        "rule": role(l_ink, 0.12),
+        "rule-solid": to_hex(parse_hex(silver)),
+        "accent": l_accent,
+        "accent-tint": role(l_accent, 0.08),
+        "link": l_link,
+    }
+    dark = {
+        "paper": to_hex(parse_hex(d_paper)),
+        "paper-2": mix(d_paper, d_ink, 0.06),
+        "ink": d_ink,
+        "muted": d_muted,
+        "soft": d_soft,
+        "rule": role(d_ink, 0.12),
+        "rule-solid": role(silver, 0.25),
+        "accent": d_accent,
+        "accent-tint": role(d_accent, 0.10),
+        "link": d_link,
+    }
+    return {"light": light, "dark": dark}
+
+
+def check_skin(skins: dict) -> dict:
+    """Validate each skin's text roles against its own paper background."""
+    if not isinstance(skins, dict) or set(skins) < {"light", "dark"}:
+        raise InputError("skin must contain 'light' and 'dark' objects")
+    report: dict = {}
+    for mode in ("light", "dark"):
+        values = skins[mode]
+        if not isinstance(values, dict):
+            raise InputError(f"{mode} skin must be an object")
+        missing = [r for r in ROLES if r not in values]
+        if missing:
+            raise InputError(f"{mode} skin is missing roles: {', '.join(missing)}")
+        paper = values["paper"]
+        for name in TEXT_ROLES:
+            value = values[name]
+            if not isinstance(value, str) or value.startswith("rgba"):
+                raise InputError(f"{mode}.{name} must be an opaque hex color")
+            ratio = contrast(parse_hex(paper), parse_hex(value))
+            report.setdefault(mode, {})[name] = {
+                "ratio": round(ratio, 2),
+                "min": TEXT_MIN,
+                "pass": ratio + 1e-9 >= TEXT_MIN,
+            }
+    return report
+
+
+def violations(report: dict) -> list[tuple[str, str, dict]]:
+    out = []
+    for mode, roles in report.items():
+        for name, row in roles.items():
+            if not row["pass"]:
+                out.append((mode, name, row))
+    return out
+
+
+# ---------------------------------------------------------------- CLI
+def load_json(path: str) -> dict:
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise InputError(f"cannot read {path}: {exc.strerror or exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise InputError(f"{path} is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise InputError(f"{path} must contain a JSON object")
+    return data
+
+
+def emit_text(brand_name: str, skins: dict, report: dict) -> None:
+    print(f"skin: {brand_name}")
+    for mode in ("light", "dark"):
+        print(f"  {mode}:")
+        for name in ROLES:
+            print(f"    {name:<12} {skins[mode][name]}")
+        worst = min((r for r in report[mode].values()), key=lambda r: r["ratio"])
+        print(f"    contract: worst text role {worst['ratio']:.2f}:1 "
+              f"(min {TEXT_MIN}:1)")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="skin-forge",
+        description="Compile a brand palette into a WCAG-checked diagram skin.")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_compile = sub.add_parser("compile", help="brand JSON -> light+dark skin")
+    p_compile.add_argument("brand", help="brand palette JSON file")
+    p_compile.add_argument("--json", action="store_true", help="machine output")
+    p_compile.add_argument("--out", help="write skin JSON to this path")
+
+    p_check = sub.add_parser("check", help="validate an existing skin JSON")
+    p_check.add_argument("skin", help="skin JSON with light/dark objects")
+    p_check.add_argument("--json", action="store_true", help="machine output")
+
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "compile":
+            brand = load_json(args.brand)
+            name = brand.get("name", Path(args.brand).stem)
+            skins = compile_skin(brand)
+            report = check_skin(skins)
+            result = {
+                "schema": SCHEMA,
+                "brand": {"name": name},
+                "skins": skins,
+                "checks": report,
+                "summary": {
+                    "roles": len(ROLES),
+                    "modes": 2,
+                    "violations": len(violations(report)),
+                },
+            }
+            if args.out:
+                Path(args.out).write_text(
+                    json.dumps(result, indent=2) + "\n", encoding="utf-8")
+            if args.json:
+                print(json.dumps(result, indent=2))
+            else:
+                emit_text(name, skins, report)
+            return 0 if not violations(report) else 1
+
+        skin = load_json(args.skin)
+        skins = skin["skins"] if "skins" in skin else skin
+        report = check_skin(skins)
+        bad = violations(report)
+        result = {"schema": SCHEMA, "checks": report,
+                  "summary": {"violations": len(bad)}}
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            for mode, name, row in bad:
+                print(f"FAIL {mode}.{name}: {row['ratio']:.2f}:1 "
+                      f"< {row['min']}:1")
+            print(f"{len(bad)} violation(s)" if bad
+                  else "all text roles clear 4.5:1")
+        return 1 if bad else 0
+    except InputError as exc:
+        print(f"skin-forge: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())
